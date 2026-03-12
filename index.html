@@ -1110,9 +1110,15 @@ async function detectIris() {
     const lR = Math.max(...leftPts.map(p=>dist2(p,lc)));
     const rR = Math.max(...rightPts.map(p=>dist2(p,rc)));
 
+    // Contours de paupières MediaPipe pour masque réaliste
+    const leftEyelidIdx  = [33,246,161,160,159,158,157,173,133,155,154,153,145,144,163,7];
+    const rightEyelidIdx = [362,398,384,385,386,387,388,466,263,249,390,373,374,380,381,382];
+    const leftEyelid  = leftEyelidIdx.map(i => lm[i]).filter(Boolean);
+    const rightEyelid = rightEyelidIdx.map(i => lm[i]).filter(Boolean);
+
     S.iris = {
-      L: { x: lc.x, y: lc.y, r: lR * 1.15 },
-      R: { x: rc.x, y: rc.y, r: rR * 1.15 }
+      L: { x: lc.x, y: lc.y, r: lR * 1.15, eyelid: leftEyelid },
+      R: { x: rc.x, y: rc.y, r: rR * 1.15, eyelid: rightEyelid }
     };
 
     const mx=S.img.width/CW, my=S.img.height/CH;
@@ -1185,7 +1191,7 @@ function render(markDone=true) {
   [document.getElementById('mainCanvas'), document.getElementById('afterCanvas')].forEach(cv => {
     const ctx = cv.getContext('2d');
     ctx.drawImage(S.img, 0, 0, cv.width, cv.height);
-    [S.iris.L, S.iris.R].forEach(e => paintIris(ctx,e.x,e.y,e.r*rscale,tr,tg,tb,int,sat,bri,blen));
+    [S.iris.L, S.iris.R].forEach(e => paintIris(ctx,e.x,e.y,e.r*rscale,tr,tg,tb,int,sat,bri,blen,e.eyelid||null));
   });
   if(markDone) {
     S.hasResult = true;
@@ -1233,12 +1239,33 @@ function hslToRgb(h,s,l){
   return[Math.round(r*255),Math.round(g*255),Math.round(b*255)];
 }
 
-function paintIris(ctx,cx,cy,r,tr,tg,tb,intensity,satBoost,briOffset,blendEdge) {
+function buildEyelidMask(ctx, eyelid, cx, cy, r) {
+  // Crée un canvas de masque basé sur le contour de la paupière
+  if (!eyelid || eyelid.length < 4) return null;
+  const pad = Math.ceil(r * 2 + 8);
+  const x0 = Math.floor(cx - r - 4);
+  const y0 = Math.floor(cy - r - 4);
+  const mc = document.createElement('canvas');
+  mc.width = ctx.canvas.width; mc.height = ctx.canvas.height;
+  const mctx = mc.getContext('2d');
+  mctx.beginPath();
+  mctx.moveTo(eyelid[0].x, eyelid[0].y);
+  for (let i = 1; i < eyelid.length; i++) mctx.lineTo(eyelid[i].x, eyelid[i].y);
+  mctx.closePath();
+  mctx.fillStyle = 'white';
+  mctx.fill();
+  return mctx.getImageData(0, 0, mc.width, mc.height);
+}
+
+function paintIris(ctx,cx,cy,r,tr,tg,tb,intensity,satBoost,briOffset,blendEdge,eyelid) {
   const x0=Math.max(0,Math.floor(cx-r-4));
   const y0=Math.max(0,Math.floor(cy-r-4));
   const w=Math.min(ctx.canvas.width-x0,Math.ceil(r*2+8));
   const h=Math.min(ctx.canvas.height-y0,Math.ceil(r*2+8));
   if(w<=0||h<=0) return;
+
+  // Masque paupière : on récupère quels pixels sont dans le contour de l'œil ouvert
+  const eyelidMask = eyelid && eyelid.length >= 4 ? buildEyelidMask(ctx, eyelid, cx, cy, r) : null;
 
   const [tH, tS, tL] = rgbToHsl(tr,tg,tb);
   // Pour couleurs claires (bleu, vert, gris) on vise une luminosité cible plus haute
@@ -1249,6 +1276,12 @@ function paintIris(ctx,cx,cy,r,tr,tg,tb,intensity,satBoost,briOffset,blendEdge) 
   for(let j=0;j<h;j++){for(let i=0;i<w;i++){
     const px=x0+i-cx, py=y0+j-cy, dist=Math.sqrt(px*px+py*py);
     if(dist>r) continue;
+    // Vérifier si le pixel est dans le contour de la paupière
+    const px2 = x0+i, py2 = y0+j;
+    if(eyelidMask) {
+      const mi = (py2 * eyelidMask.width + px2) * 4;
+      if(eyelidMask.data[mi] < 128) continue; // hors paupière (paupière fermée sur ce pixel)
+    }
     const idx=(j*w+i)*4;
     const or=d[idx],og=d[idx+1],ob=d[idx+2];
 
