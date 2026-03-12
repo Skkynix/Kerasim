@@ -142,8 +142,8 @@ html, body {
 }
 
 .tb-btn {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
-  padding: 0.55rem 0.3rem;
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 0.7rem 0.3rem;
   background: rgba(255,255,255,0.05); border: 1px solid var(--line);
   border-radius: 10px; cursor: pointer; transition: all 0.2s;
   font-family: 'Outfit', sans-serif;
@@ -153,8 +153,8 @@ html, body {
 .tb-btn.primary { background: var(--gold); border-color: var(--gold); }
 .tb-btn.primary .tb-icon, .tb-btn.primary .tb-label { color: var(--ink); }
 .tb-btn.disabled { opacity: 0.35; }
-.tb-icon { font-size: 1.1rem; line-height: 1; }
-.tb-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted2); white-space: nowrap; }
+.tb-icon { font-size: 1.3rem; line-height: 1; }
+.tb-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted2); white-space: nowrap; }
 .tb-btn.on .tb-label { color: var(--gold); }
 
 /* ══════════════════════════════════════════
@@ -167,7 +167,7 @@ html, body {
   border-top: 1px solid var(--line2);
   transform: translateY(100%);
   transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
-  max-height: 85vh;
+  max-height: 88vh;
   display: flex; flex-direction: column;
 }
 .sheet.open { transform: translateY(0); }
@@ -190,7 +190,7 @@ html, body {
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; font-size: 13px; color: var(--muted2);
 }
-.sheet-body { flex: 1; overflow-y: auto; padding: 0.75rem 1.25rem 1.5rem; }
+.sheet-body { flex: 1; overflow-y: auto; padding: 0.75rem 1.25rem calc(5.5rem + env(safe-area-inset-bottom)); }
 .sheet-body::-webkit-scrollbar { width: 2px; }
 .sheet-body::-webkit-scrollbar-thumb { background: var(--line2); }
 
@@ -280,18 +280,19 @@ html, body {
 .custom-row span { font-size: 13px; color: var(--muted); }
 
 /* Sliders */
-.slider-item { margin-bottom: 1.1rem; }
+.slider-item { margin-bottom: 1.5rem; }
 .slider-header { display: flex; justify-content: space-between; margin-bottom: 0.4rem; }
 .slider-header span { font-size: 12px; color: var(--muted); }
 .slider-header b { font-size: 12px; color: var(--gold); font-weight: 400; }
 input[type="range"] {
-  -webkit-appearance: none; width: 100%; height: 3px;
+  -webkit-appearance: none; width: 100%; height: 4px;
   background: var(--line2); border-radius: 2px; outline: none; cursor: pointer;
+  margin: 8px 0;
 }
 input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 18px; height: 18px;
+  -webkit-appearance: none; width: 26px; height: 26px;
   border-radius: 50%; background: var(--gold); cursor: pointer;
-  box-shadow: 0 0 6px rgba(201,168,108,0.4);
+  box-shadow: 0 0 8px rgba(201,168,108,0.5);
 }
 
 /* Detection */
@@ -509,9 +510,9 @@ details[open] summary::before { transform: rotate(90deg); }
     <span class="tb-icon">⬆</span>
     <span class="tb-label">Exporter</span>
   </div>
-  <div class="tb-btn" id="btnView" onclick="openSheet('sheetView')">
+  <div class="tb-btn" id="btnView" onclick="toggleView(this)">
     <span class="tb-icon">◧</span>
-    <span class="tb-label">Vue</span>
+    <span class="tb-label">Avant/Après</span>
   </div>
 </div>
 
@@ -1336,6 +1337,19 @@ function setView(v, btn) {
   document.getElementById('mainCanvas').style.display = single&&S.img ? 'block' : 'none';
   document.getElementById('splitView').classList.toggle('show', !single&&S.img);
   closeAllSheets();
+}
+
+// ─── TOGGLE VUE DIRECT ───────────────────────────────────────────────────────
+function toggleView(btn) {
+  const isSingle = S.view === 'single';
+  const newView = isSingle ? 'split' : 'single';
+  S.view = newView;
+  const single = newView === 'single';
+  document.getElementById('mainCanvas').style.display = single && S.img ? 'block' : 'none';
+  document.getElementById('splitView').classList.toggle('show', !single && S.img);
+  btn.classList.toggle('on', !single);
+  btn.querySelector('.tb-label').textContent = single ? 'Avant/Après' : 'Simulation';
+  btn.querySelector('.tb-icon').textContent = single ? '◧' : '▣';
 }
 
 // ─── EXPORTS ──────────────────────────────────────────────────────────────────
